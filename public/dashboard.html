@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Google Auth with Appwrite</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <div class="max-w-6xl mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-8">
+      <h1 class="text-3xl font-bold">Dashboard</h1>
+      <a href="/logout" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Logout</a>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow p-6">
+      <h2 class="text-xl font-semibold mb-4">Welcome to your dashboard!</h2>
+      <p class="mb-4">You have successfully logged in with Google and your account is connected to Appwrite.</p>
+      
+      <div class="mt-8 border-t pt-4">
+        <h3 class="text-lg font-medium mb-2">Your Profile</h3>
+        <div id="profile" class="text-gray-700">Loading...</div>
+      </div>
+      
+      <div class="mt-8 border-t pt-4">
+        <h3 class="text-lg font-medium mb-2">Token Status</h3>
+        <div id="token-status" class="text-gray-700">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Fetch user profile and token info when page loads
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const response = await fetch('/api/profile');
+        if (!response.ok) throw new Error('Failed to fetch profile');
+        
+        const data = await response.json();
+        
+        // Update profile section
+        document.getElementById('profile').innerHTML = `
+          <p><strong>Name:</strong> ${data.name}</p>
+          <p><strong>Email:</strong> ${data.email}</p>
+        `;
+        
+        // Update token status
+        document.getElementById('token-status').innerHTML = `
+          <p><strong>Access Token:</strong> ${data.accessToken ? 'Valid' : 'None'}</p>
+          <p><strong>Refresh Token:</strong> ${data.hasRefreshToken ? 'Available' : 'None'}</p>
+          <p><strong>Expires:</strong> ${data.expiresAt ? new Date(data.expiresAt).toLocaleString() : 'N/A'}</p>
+        `;
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        document.getElementById('profile').textContent = 'Error loading profile data.';
+        document.getElementById('token-status').textContent = 'Error loading token data.';
+      }
+    });
+  </script>
+</body>
+</html>
