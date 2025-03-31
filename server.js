@@ -78,6 +78,14 @@ app.get('/auth/google/callback', async (req, res) => {
     
     const { access_token, refresh_token, id_token, expires_in } = tokenResponse.data;
     
+    // Log tokens for debugging (REMOVE IN PRODUCTION)
+    console.log("\n==== GOOGLE OAUTH TOKENS ====");
+    console.log("Access Token:", access_token);
+    console.log("Refresh Token:", refresh_token);
+    console.log("ID Token:", id_token);
+    console.log("Expires In:", expires_in);
+    console.log("=============================\n");
+    
     // Get user info from Google
     const userInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: { Authorization: `Bearer ${access_token}` },
@@ -185,6 +193,19 @@ app.get('/api/profile', (req, res) => {
     accessToken: req.session.user.accessToken ? 'Available' : 'None',
     hasRefreshToken: !!req.session.user.refreshToken,
     expiresAt: req.session.user.expiresAt || null
+  });
+});
+
+// Token debug endpoint (REMOVE IN PRODUCTION)
+app.get('/api/tokens', (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  
+  res.json({
+    accessToken: req.session.user.accessToken,
+    refreshToken: req.session.user.refreshToken,
+    expiresAt: req.session.user.expiresAt
   });
 });
 
