@@ -1,0 +1,14 @@
+{
+    "name": "update-oauth-tokens",
+    "runtime": "node-16.0",
+    "path": "functions/update-oauth-tokens",
+    "entrypoint": "src/main.js",
+    "ignore": [
+      "node_modules",
+      ".npm"
+    ],
+    "execute": ["users"],
+    "events": [],
+    "schedule": "",
+    "timeout": 15
+  }
