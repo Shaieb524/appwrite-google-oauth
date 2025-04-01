@@ -4,9 +4,9 @@ module.exports = async function(req, res) {
   // Initialize Appwrite
   const client = new Client();
   client
-    .setEndpoint(req.env.APPWRITE_ENDPOINT) // Adjust if self-hosting
-    .setProject(req.env.APPWRITE_FUNCTION_PROJECT_ID)
-    .setKey(req.env.APPWRITE_API_KEY);
+    .setEndpoint(req.variables.APPWRITE_ENDPOINT) // Adjust if self-hosting
+    .setProject(req.variables.APPWRITE_FUNCTION_PROJECT_ID)
+    .setKey(req.variables.APPWRITE_API_KEY);
 
   const databases = new Databases(client);
   
@@ -19,8 +19,8 @@ module.exports = async function(req, res) {
     
     // Check if token record exists
     const records = await databases.listDocuments(
-      req.env.DATABASE_ID,
-      req.env.TOKENS_COLLECTION_ID,
+      req.variables.DATABASE_ID,
+      req.variables.TOKENS_COLLECTION_ID,
       [
         Query.equal('userId', userId),
         Query.equal('provider', provider)
@@ -31,8 +31,8 @@ module.exports = async function(req, res) {
       // Update existing record
       const record = records.documents[0];
       await databases.updateDocument(
-        req.env.DATABASE_ID,
-        req.env.TOKENS_COLLECTION_ID,
+        req.variables.DATABASE_ID,
+        req.variables.TOKENS_COLLECTION_ID,
         record.$id,
         {
           accessToken,
@@ -45,8 +45,8 @@ module.exports = async function(req, res) {
     } else {
       // Create new record
       await databases.createDocument(
-        req.env.DATABASE_ID,
-        req.env.TOKENS_COLLECTION_ID,
+        req.variables.DATABASE_ID,
+        req.variables.TOKENS_COLLECTION_ID,
         ID.unique(),
         {
           userId,
