@@ -101,8 +101,11 @@ app.get('/auth/google/callback', async (req, res) => {
       // Try to find user by email - custom implementation since we don't have JWT
       let user;
       try {
-        // List users with the given email
-        const usersList = await users.list([`email=${email}`]);
+        // List users with the given email using Query class
+        const { Query } = require('node-appwrite');
+        const usersList = await users.list([
+          Query.equal('email', email)
+        ]);
         
         if (usersList.total > 0) {
           // User exists
