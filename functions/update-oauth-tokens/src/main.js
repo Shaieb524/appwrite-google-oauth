@@ -1,29 +1,36 @@
 const { Client, Databases, ID, Query } = require('node-appwrite');
 
-module.exports = async function(req, res) {
-  // Check if environment variables are available
-  // if (!req.variables) {
-  //   return res.json({ success: false, message: 'Environment variables not available' }, 500);
-  // }
-
-  // Initialize Appwrite with proper error handling
+// Using the new context-based function signature
+module.exports = async function(context) {
+  // Initialize Appwrite client
   const client = new Client();
   
   try {
-    // Access environment variables safely with fallbacks
-    const endpoint = process.env.APPWRITE_ENDPOINT;
-    const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID;
-    const apiKey = process.env.APPWRITE_API_KEY;
-    const databaseId = process.env.DATABASE_ID;
-    const tokensCollectionId = process.env.TOKENS_COLLECTION_ID;
+    // Log available context for debugging
+    context.log('Function executed with context structure:', Object.keys(context));
+    
+    // Access environment variables from context.env
+    const endpoint = context.env.APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1';
+    const projectId = context.env.APPWRITE_FUNCTION_PROJECT_ID;
+    const apiKey = context.env.APPWRITE_API_KEY;
+    const databaseId = context.env.DATABASE_ID;
+    const tokensCollectionId = context.env.TOKENS_COLLECTION_ID;
+    
+    // Log environment variable status
+    context.log('Environment variables status:', {
+      hasEndpoint: !!endpoint,
+      hasProjectId: !!projectId,
+      hasApiKey: !!apiKey,
+      hasDatabaseId: !!databaseId,
+      hasTokensCollectionId: !!tokensCollectionId
+    });
     
     // Validate required environment variables
-    if (!endpoint || !projectId || !apiKey || !databaseId || !tokensCollectionId) {
-      return res.json({ 
-        success: false, 
+    if (!projectId || !apiKey || !databaseId || !tokensCollectionId) {
+      return context.json({
+        success: false,
         message: 'Missing required environment variables',
         missing: {
-          endpoint: !endpoint,
           projectId: !projectId,
           apiKey: !apiKey,
           databaseId: !databaseId,
@@ -39,11 +46,25 @@ module.exports = async function(req, res) {
 
     const databases = new Databases(client);
     
-    // Validate payload
-    const { userId, provider, accessToken, refreshToken, expiryDate } = req.payload || {};
+    // Validate payload (in new API, it's in context.body)
+    const payload = context.body || {};
+    const userId = payload.userId;
+    const provider = payload.provider;
+    const accessToken = payload.accessToken;
+    const refreshToken = payload.refreshToken;
+    const expiryDate = payload.expiryDate;
+    
+    context.log('Payload validation:', {
+      hasUserId: !!userId,
+      hasProvider: !!provider,
+      hasAccessToken: !!accessToken
+    });
     
     if (!userId || !provider || !accessToken) {
-      return res.json({ success: false, message: 'Missing required fields: userId, provider, and accessToken are required' }, 400);
+      return context.json({
+        success: false,
+        message: 'Missing required fields: userId, provider, and accessToken are required'
+      }, 400);
     }
     
     // Check if token record exists
@@ -71,10 +92,11 @@ module.exports = async function(req, res) {
         }
       );
       
-      return res.json({ 
-        success: true, 
+      context.log(`Token updated for user ${userId}`);
+      return context.json({
+        success: true,
         message: 'Token updated successfully',
-        recordId: record.$id 
+        recordId: record.$id
       });
     } else {
       // Create new record
@@ -88,21 +110,23 @@ module.exports = async function(req, res) {
           accessToken,
           refreshToken: refreshToken || '',
           expiryDate: expiryDate || '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         }
       );
       
-      return res.json({ 
-        success: true, 
+      context.log(`Token created for user ${userId}`);
+      return context.json({
+        success: true,
         message: 'Token created successfully',
-        recordId: newRecord.$id 
+        recordId: newRecord.$id
       });
     }
   } catch (error) {
-    console.error('Error in token management function:', error);
-    return res.json({ 
-      success: false, 
-      message: 'Internal server error: ' + error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    context.error('Error in token management function:', error);
+    return context.json({
+      success: false,
+      message: 'Internal server error: ' + error.message
     }, 500);
   }
 };
