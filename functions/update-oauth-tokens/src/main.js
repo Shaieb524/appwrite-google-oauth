@@ -11,11 +11,11 @@ module.exports = async function(req, res) {
   
   try {
     // Access environment variables safely with fallbacks
-    const endpoint = req.variables['APPWRITE_ENDPOINT'] || process.env.APPWRITE_ENDPOINT;
-    const projectId = req.variables['APPWRITE_FUNCTION_PROJECT_ID'] || process.env.APPWRITE_FUNCTION_PROJECT_ID;
-    const apiKey = req.variables['APPWRITE_API_KEY'] || process.env.APPWRITE_API_KEY;
-    const databaseId = req.variables['DATABASE_ID'] || process.env.DATABASE_ID;
-    const tokensCollectionId = req.variables['TOKENS_COLLECTION_ID'] || process.env.TOKENS_COLLECTION_ID;
+    const endpoint = process.env.APPWRITE_ENDPOINT;
+    const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID;
+    const apiKey = process.env.APPWRITE_API_KEY;
+    const databaseId = process.env.DATABASE_ID;
+    const tokensCollectionId = process.env.TOKENS_COLLECTION_ID;
     
     // Validate required environment variables
     if (!endpoint || !projectId || !apiKey || !databaseId || !tokensCollectionId) {
