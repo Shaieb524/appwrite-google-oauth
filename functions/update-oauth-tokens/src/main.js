@@ -1,4 +1,4 @@
-const { Client, Databases, ID, Query } = require('node-appwrite');
+const { Client, Databases, ID, Query, Users } = require('node-appwrite');
 
 module.exports = async function(context) {
   // Extract req and res from context
@@ -31,6 +31,7 @@ module.exports = async function(context) {
       .setKey(apiKey);
 
     const databases = new Databases(client);
+    const users = new Users(client);
     
     // Get payload from req.body
     let effectivePayload = {};
@@ -51,8 +52,6 @@ module.exports = async function(context) {
       console.log('Using req.body as object directly');
     }
     
-    console.log('Initial payload:', effectivePayload);
-    
     // Check if the effectivePayload is itself a stringified JSON
     // This happens when SDK sends JSON stringified twice
     if (typeof effectivePayload === 'string') {
@@ -72,11 +71,15 @@ module.exports = async function(context) {
     const accessToken = effectivePayload.accessToken;
     const refreshToken = effectivePayload.refreshToken;
     const expiryDate = effectivePayload.expiryDate;
+    const providerUserId = effectivePayload.providerUserId; // Optional: ID from the provider (e.g., Google's sub)
+    const email = effectivePayload.email; // Optional: user's email
     
     console.log('Payload validation:', {
       hasUserId: !!userId,
       hasProvider: !!provider,
-      hasAccessToken: !!accessToken
+      hasAccessToken: !!accessToken,
+      hasProviderUserId: !!providerUserId,
+      hasEmail: !!email
     });
     
     if (!userId || !provider || !accessToken) {
@@ -84,6 +87,56 @@ module.exports = async function(context) {
         success: false,
         message: 'Missing required fields: userId, provider, and accessToken are required'
       }, 400);
+    }
+    
+    // Try to create identity for the user
+    try {
+      // First, check if identity already exists to avoid duplicates
+      let identities;
+      try {
+        // Get user identities
+        const user = await users.get(userId);
+        identities = user.identities || [];
+        console.log(`Found ${identities.length} existing identities for user ${userId}`);
+      } catch (e) {
+        console.error(`Error getting user identities: ${e.message}`);
+        identities = [];
+      }
+      
+      // Check if identity for this provider already exists
+      const existingIdentity = identities.find(identity => 
+        identity.provider === provider && 
+        (providerUserId ? identity.providerUid === providerUserId : true)
+      );
+      
+      if (!existingIdentity) {
+        // Only create identity if it doesn't exist
+        if (providerUserId) {
+          try {
+            // Create identity for provider
+            await users.createIdentity(
+              userId,
+              provider,
+              providerUserId,
+              accessToken,
+              refreshToken || null,
+              expiryDate || null,
+              email || null
+            );
+            console.log(`Created new identity for user ${userId} with provider ${provider}`);
+          } catch (identityError) {
+            console.error(`Error creating identity: ${identityError.message}`);
+            // Continue with token storage even if identity creation fails
+          }
+        } else {
+          console.log(`Cannot create identity without providerUserId for user ${userId}`);
+        }
+      } else {
+        console.log(`Identity for provider ${provider} already exists for user ${userId}`);
+      }
+    } catch (userError) {
+      console.error(`Error in identity management: ${userError.message}`);
+      // Continue with token storage even if there's an error with identity
     }
     
     // Check if token record exists
