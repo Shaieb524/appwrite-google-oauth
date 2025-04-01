@@ -11,11 +11,11 @@ module.exports = async function(req, res) {
   
   try {
     // Access environment variables safely with fallbacks
-    const endpoint = req.variables['APPWRITE_ENDPOINT'] || process.env.APPWRITE_ENDPOINT;
-    const projectId = req.variables['APPWRITE_FUNCTION_PROJECT_ID'] || process.env.APPWRITE_FUNCTION_PROJECT_ID;
-    const apiKey = req.variables['APPWRITE_API_KEY'] || process.env.APPWRITE_API_KEY;
-    const databaseId = req.variables['DATABASE_ID'] || process.env.DATABASE_ID;
-    const tokensCollectionId = req.variables['TOKENS_COLLECTION_ID'] || process.env.TOKENS_COLLECTION_ID;
+    const endpoint = req.variables['APPWRITE_ENDPOINT'] || req.env.APPWRITE_ENDPOINT;
+    const projectId = req.variables['APPWRITE_FUNCTION_PROJECT_ID'] || req.env.APPWRITE_FUNCTION_PROJECT_ID;
+    const apiKey = req.variables['APPWRITE_API_KEY'] || req.env.APPWRITE_API_KEY;
+    const databaseId = req.variables['DATABASE_ID'] || req.env.DATABASE_ID;
+    const tokensCollectionId = req.variables['TOKENS_COLLECTION_ID'] || req.env.TOKENS_COLLECTION_ID;
     
     // Validate required environment variables
     if (!endpoint || !projectId || !apiKey || !databaseId || !tokensCollectionId) {
@@ -102,7 +102,7 @@ module.exports = async function(req, res) {
     return res.json({ 
       success: false, 
       message: 'Internal server error: ' + error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      stack: req.env.NODE_ENV === 'development' ? error.stack : undefined
     }, 500);
   }
 };
