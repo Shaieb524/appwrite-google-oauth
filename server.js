@@ -61,14 +61,23 @@ app.get('/auth/google', (req, res) => {
 // Call the Appwrite function to store tokens
 const storeTokensInAppwrite = async (userId, accessToken, refreshToken, expiryDate) => {
   try {
+    // Create the payload
+    const payload = {
+      userId,
+      provider: 'google',
+      accessToken,
+      refreshToken,
+      expiryDate
+    };
+    
+    console.log('Attempting to send payload to Appwrite:', payload);
+    
+    // Try with AsyncAPI format
     const response = await axios.post(
       `${process.env.APPWRITE_ENDPOINT}/functions/${process.env.UPDATE_TOKENS_FUNCTION_ID}/executions`,
-      {
-        userId,
-        provider: 'google',
-        accessToken,
-        refreshToken,
-        expiryDate
+      { 
+        async: false,
+        data: JSON.stringify(payload)
       },
       {
         headers: {
@@ -79,10 +88,15 @@ const storeTokensInAppwrite = async (userId, accessToken, refreshToken, expiryDa
       }
     );
     
-    console.log('Tokens stored in Appwrite:', response.data);
+    console.log('Appwrite function execution response:', response.data);
     return response.data;
   } catch (error) {
-    console.error('Error storing tokens in Appwrite:', error);
+    console.error('Error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      headers: error.response?.headers
+    });
     return null;
   }
 };
