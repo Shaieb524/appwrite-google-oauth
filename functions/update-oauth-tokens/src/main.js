@@ -2,32 +2,34 @@ const { Client, Databases, ID, Query } = require('node-appwrite');
 
 // Using the new context-based function signature
 module.exports = async function(context) {
+  // Extract req and res from context
+  const { req, res } = context;
+  
   // Initialize Appwrite client
   const client = new Client();
   
   try {
     // Log available context for debugging
-    context.log('Function executed with context structure:', Object.keys(context));
+    console.log('Function executed with context structure:', Object.keys(context));
     
+    // Access environment variables from process.env as requested
     const endpoint = process.env.APPWRITE_ENDPOINT;
     const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID;
     const apiKey = process.env.APPWRITE_API_KEY;
     const databaseId = process.env.DATABASE_ID;
     const tokensCollectionId = process.env.TOKENS_COLLECTION_ID;
 
-    
-    // Log environment variable status
-    context.log('Environment variables status:', {
-      hasEndpoint: !!endpoint,
-      hasProjectId: !!projectId,
-      hasApiKey: !!apiKey,
-      hasDatabaseId: !!databaseId,
-      hasTokensCollectionId: !!tokensCollectionId
+    console.log('Environment variables:', {
+      endpoint: !!endpoint, 
+      projectId: !!projectId,
+      apiKey: !!apiKey,
+      databaseId: !!databaseId,
+      tokensCollectionId: !!tokensCollectionId
     });
     
     // Validate required environment variables
     if (!projectId || !apiKey || !databaseId || !tokensCollectionId) {
-      return context.json({
+      return res.json({
         success: false,
         message: 'Missing required environment variables',
         missing: {
@@ -46,22 +48,24 @@ module.exports = async function(context) {
 
     const databases = new Databases(client);
     
-    // Validate payload (in new API, it's in context.body)
-    const payload = context.body || {};
+    // Validate payload - check multiple possible locations
+    const payload = req.body || req.payload || {};
+    console.log('Payload received:', JSON.stringify(payload));
+    
     const userId = payload.userId;
     const provider = payload.provider;
     const accessToken = payload.accessToken;
     const refreshToken = payload.refreshToken;
     const expiryDate = payload.expiryDate;
     
-    context.log('Payload validation:', {
+    console.log('Payload validation:', {
       hasUserId: !!userId,
       hasProvider: !!provider,
       hasAccessToken: !!accessToken
     });
     
     if (!userId || !provider || !accessToken) {
-      return context.json({
+      return res.json({
         success: false,
         message: 'Missing required fields: userId, provider, and accessToken are required'
       }, 400);
@@ -92,8 +96,8 @@ module.exports = async function(context) {
         }
       );
       
-      context.log(`Token updated for user ${userId}`);
-      return context.json({
+      console.log(`Token updated for user ${userId}`);
+      return res.json({
         success: true,
         message: 'Token updated successfully',
         recordId: record.$id
@@ -115,16 +119,16 @@ module.exports = async function(context) {
         }
       );
       
-      context.log(`Token created for user ${userId}`);
-      return context.json({
+      console.log(`Token created for user ${userId}`);
+      return res.json({
         success: true,
         message: 'Token created successfully',
         recordId: newRecord.$id
       });
     }
   } catch (error) {
-    context.error('Error in token management function:', error);
-    return context.json({
+    console.error('Error in token management function:', error);
+    return res.json({
       success: false,
       message: 'Internal server error: ' + error.message
     }, 500);
