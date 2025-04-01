@@ -1,0 +1,9 @@
+{
+    "name": "update-oauth-tokens",
+    "version": "1.0.0",
+    "description": "Function to update OAuth tokens in Appwrite",
+    "main": "src/main.js",
+    "dependencies": {
+      "node-appwrite": "^10.0.0"
+    }
+  }
