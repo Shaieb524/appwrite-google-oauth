@@ -2,9 +2,9 @@ const { Client, Databases, ID, Query } = require('node-appwrite');
 
 module.exports = async function(req, res) {
   // Check if environment variables are available
-  if (!req.variables) {
-    return res.json({ success: false, message: 'Environment variables not available' }, 500);
-  }
+  // if (!req.variables) {
+  //   return res.json({ success: false, message: 'Environment variables not available' }, 500);
+  // }
 
   // Initialize Appwrite with proper error handling
   const client = new Client();
