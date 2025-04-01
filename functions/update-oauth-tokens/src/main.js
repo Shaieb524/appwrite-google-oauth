@@ -9,12 +9,12 @@ module.exports = async function(context) {
     // Log available context for debugging
     context.log('Function executed with context structure:', Object.keys(context));
     
-    // Access environment variables from context.env
-    const endpoint = context.env.APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1';
-    const projectId = context.env.APPWRITE_FUNCTION_PROJECT_ID;
-    const apiKey = context.env.APPWRITE_API_KEY;
-    const databaseId = context.env.DATABASE_ID;
-    const tokensCollectionId = context.env.TOKENS_COLLECTION_ID;
+    const endpoint = process.env.APPWRITE_ENDPOINT;
+    const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID;
+    const apiKey = process.env.APPWRITE_API_KEY;
+    const databaseId = process.env.DATABASE_ID;
+    const tokensCollectionId = process.env.TOKENS_COLLECTION_ID;
+
     
     // Log environment variable status
     context.log('Environment variables status:', {
