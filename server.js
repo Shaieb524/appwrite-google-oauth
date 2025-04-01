@@ -1,6 +1,6 @@
-// server.js - Fixed version
+// server.js - Updated with Appwrite SDK
 const express = require('express');
-const { Client, Users, ID } = require('node-appwrite');
+const { Client, Users, Functions, ID, Query } = require('node-appwrite');
 const session = require('express-session');
 const axios = require('axios');
 const querystring = require('querystring');
@@ -58,9 +58,12 @@ app.get('/auth/google', (req, res) => {
   res.redirect(authUrl);
 });
 
-// Call the Appwrite function to store tokens
+// Call the Appwrite function to store tokens using the SDK
 const storeTokensInAppwrite = async (userId, accessToken, refreshToken, expiryDate) => {
   try {
+    // Initialize the Functions service with the same client
+    const functions = new Functions(client);
+    
     // Create the payload
     const payload = {
       userId,
@@ -70,33 +73,26 @@ const storeTokensInAppwrite = async (userId, accessToken, refreshToken, expiryDa
       expiryDate
     };
     
-    console.log('Attempting to send payload to Appwrite:', payload);
+    console.log('Executing function with payload via SDK:', payload);
     
-    // Try with AsyncAPI format
-    const response = await axios.post(
-      `${process.env.APPWRITE_ENDPOINT}/functions/${process.env.UPDATE_TOKENS_FUNCTION_ID}/executions`,
-      { 
-        async: false,
-        data: JSON.stringify(payload)
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Appwrite-Project': process.env.APPWRITE_PROJECT_ID,
-          'X-Appwrite-Key': process.env.APPWRITE_API_KEY
-        }
-      }
+    // Execute the function using the SDK
+    const execution = await functions.createExecution(
+      process.env.UPDATE_TOKENS_FUNCTION_ID,
+      JSON.stringify(payload),
+      false // async = false to get the response immediately
     );
     
-    console.log('Appwrite function execution response:', response.data);
-    return response.data;
+    console.log('Function execution completed via SDK:', execution);
+    return execution;
   } catch (error) {
-    console.error('Error details:', {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-      headers: error.response?.headers
-    });
+    console.error('SDK Error executing Appwrite function:', error);
+    
+    // Log more detailed error information
+    if (error.response) {
+      console.error('Error response data:', error.response.data);
+      console.error('Error response status:', error.response.status);
+    }
+    
     return null;
   }
 };
@@ -144,8 +140,7 @@ app.get('/auth/google/callback', async (req, res) => {
       // Try to find user by email - custom implementation since we don't have JWT
       let user;
       try {
-        // List users with the given email using Query class
-        const { Query } = require('node-appwrite');
+        // List users with the given email
         const usersList = await users.list([
           Query.equal('email', email)
         ]);
@@ -153,9 +148,9 @@ app.get('/auth/google/callback', async (req, res) => {
         if (usersList.total > 0) {
           // User exists
           user = usersList.users[0];
+          console.log("Found existing user:", user.$id);
         } else {
           // Create a new user
-          // Store OAuth tokens in user preferences or a separate collection
           user = await users.create(
             ID.unique(),
             email,
@@ -165,20 +160,22 @@ app.get('/auth/google/callback', async (req, res) => {
           );
           
           console.log("Created new user:", user.$id);
+          
+          // Add a small delay to ensure the user is fully created in Appwrite
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
         
-        // Store tokens in Appwrite using the custom function
-        await storeTokensInAppwrite(
+        // Store tokens in Appwrite using the custom function with SDK
+        const tokenResult = await storeTokensInAppwrite(
           user.$id,
           access_token,
           refresh_token,
           expiryDate.toISOString()
         );
         
-        // Store Google OAuth information in user metadata or a separate collection
-        // This might require setting up a database collection for extended user data
+        console.log("Token storage result:", tokenResult ? "Success" : "Failed");
         
-        // For simplicity, store tokens in session
+        // Store user session
         req.session.user = {
           userId: user.$id,
           email,
@@ -302,6 +299,16 @@ app.post('/api/refresh', async (req, res) => {
     // Update session
     req.session.user.accessToken = access_token;
     req.session.user.expiresAt = expiryDate.toISOString();
+    
+    // Also update in Appwrite if we have a userId
+    if (req.session.user.userId) {
+      await storeTokensInAppwrite(
+        req.session.user.userId,
+        access_token,
+        refreshToken,
+        expiryDate.toISOString()
+      );
+    }
     
     res.json({
       success: true,
