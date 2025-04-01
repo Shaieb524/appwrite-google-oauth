@@ -1,6 +1,5 @@
 const { Client, Databases, ID, Query } = require('node-appwrite');
 
-// Using the new context-based function signature
 module.exports = async function(context) {
   // Extract req and res from context
   const { req, res } = context;
@@ -9,83 +8,20 @@ module.exports = async function(context) {
   const client = new Client();
   
   try {
-    // ENHANCED DEBUGGING - Start
-    // Log more details about the request
-    console.log('Request details:', {
-      method: req.method,
-      url: req.url,
-      headers: req.headers,
-    });
+    console.log('Function starting execution');
     
-    // Try different ways to access the payload
-    console.log('req.payload:', req.payload);
-    console.log('req.body:', req.body);
-    console.log('context.req?.payload:', context.req?.payload);
-    console.log('context.req?.body:', context.req?.body);
-    console.log('Raw body (if available):', req.rawBody || 'Not available');
-    
-    // Try to access the data field which is commonly used in Appwrite functions
-    if (req.data) {
-      console.log('req.data:', req.data);
-      try {
-        const parsedData = typeof req.data === 'string' ? JSON.parse(req.data) : req.data;
-        console.log('Parsed data:', parsedData);
-      } catch (e) {
-        console.log('Error parsing req.data:', e.message);
-      }
-    }
-    
-    // Check if data is in the body string
-    if (typeof req.body === 'string') {
-      try {
-        console.log('Attempting to parse req.body string:', req.body);
-        const parsedBody = JSON.parse(req.body);
-        console.log('Parsed body string:', parsedBody);
-        
-        // If we have a data field, try to parse that too
-        if (parsedBody.data && typeof parsedBody.data === 'string') {
-          try {
-            const parsedData = JSON.parse(parsedBody.data);
-            console.log('Parsed data from body.data:', parsedData);
-          } catch (e) {
-            console.log('Error parsing body.data:', e.message);
-          }
-        }
-      } catch (e) {
-        console.log('Error parsing req.body string:', e.message);
-      }
-    }
-    // ENHANCED DEBUGGING - End
-    
-    // Log available context for debugging
-    console.log('Function executed with context structure:', Object.keys(context));
-    
-    // Access environment variables from process.env as requested
+    // Access environment variables
     const endpoint = process.env.APPWRITE_ENDPOINT;
     const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID;
     const apiKey = process.env.APPWRITE_API_KEY;
     const databaseId = process.env.DATABASE_ID;
     const tokensCollectionId = process.env.TOKENS_COLLECTION_ID;
-
-    console.log('Environment variables:', {
-      endpoint: !!endpoint, 
-      projectId: !!projectId,
-      apiKey: !!apiKey,
-      databaseId: !!databaseId,
-      tokensCollectionId: !!tokensCollectionId
-    });
     
     // Validate required environment variables
     if (!projectId || !apiKey || !databaseId || !tokensCollectionId) {
       return res.json({
         success: false,
-        message: 'Missing required environment variables',
-        missing: {
-          projectId: !projectId,
-          apiKey: !apiKey,
-          databaseId: !databaseId,
-          tokensCollectionId: !tokensCollectionId
-        }
+        message: 'Missing required environment variables'
       }, 500);
     }
     
@@ -96,59 +32,41 @@ module.exports = async function(context) {
 
     const databases = new Databases(client);
     
-    // UPDATED PAYLOAD EXTRACTION - Start
-    // Try to get the payload from multiple possible locations
+    // Get payload from req.body
     let effectivePayload = {};
     
-    // Check req.body or req.payload first (original approach)
-    if (req.body && Object.keys(req.body).length > 0) {
-      console.log('Using req.body as payload');
-      effectivePayload = req.body;
-    } else if (req.payload && Object.keys(req.payload).length > 0) {
-      console.log('Using req.payload as payload');
-      effectivePayload = req.payload;
-    } 
-    // Check if we have a string in req.body that needs parsing
-    else if (typeof req.body === 'string' && req.body.trim() !== '') {
+    // Handle the case where req.body is a string that might be JSON
+    if (typeof req.body === 'string') {
       try {
-        const parsedBody = JSON.parse(req.body);
-        console.log('Using parsed req.body string as payload');
-        
-        // If we have a data field that's a string, parse that too (Appwrite format)
-        if (parsedBody.data && typeof parsedBody.data === 'string') {
-          try {
-            effectivePayload = JSON.parse(parsedBody.data);
-            console.log('Using parsed req.body.data as payload');
-          } catch (e) {
-            effectivePayload = parsedBody;
-          }
-        } else {
-          effectivePayload = parsedBody;
-        }
+        // Parse the string as JSON
+        effectivePayload = JSON.parse(req.body);
+        console.log('Parsed string body into JSON object');
       } catch (e) {
-        console.log('Error parsing req.body string, using empty payload');
+        console.error('Error parsing req.body as JSON:', e.message);
       }
+    } 
+    // Handle the case where req.body is already an object
+    else if (req.body && typeof req.body === 'object') {
+      effectivePayload = req.body;
+      console.log('Using req.body as object directly');
     }
-    // Check if we have req.data available (common in Appwrite)
-    else if (req.data) {
-      if (typeof req.data === 'string') {
-        try {
-          effectivePayload = JSON.parse(req.data);
-          console.log('Using parsed req.data as payload');
-        } catch (e) {
-          console.log('Error parsing req.data string, using as-is');
-          effectivePayload = { rawData: req.data };
-        }
-      } else {
-        console.log('Using req.data object as payload');
-        effectivePayload = req.data;
+    
+    console.log('Initial payload:', effectivePayload);
+    
+    // Check if the effectivePayload is itself a stringified JSON
+    // This happens when SDK sends JSON stringified twice
+    if (typeof effectivePayload === 'string') {
+      try {
+        effectivePayload = JSON.parse(effectivePayload);
+        console.log('Parsed double-stringified JSON payload');
+      } catch (e) {
+        console.error('Error parsing stringified payload:', e.message);
       }
     }
     
-    console.log('Final effective payload:', JSON.stringify(effectivePayload));
-    // UPDATED PAYLOAD EXTRACTION - End
+    console.log('Final effective payload:', effectivePayload);
     
-    // Extract fields from the effective payload
+    // Extract fields from the payload
     const userId = effectivePayload.userId;
     const provider = effectivePayload.provider;
     const accessToken = effectivePayload.accessToken;
