@@ -58,6 +58,35 @@ app.get('/auth/google', (req, res) => {
   res.redirect(authUrl);
 });
 
+// Call the Appwrite function to store tokens
+const storeTokensInAppwrite = async (userId, accessToken, refreshToken, expiryDate) => {
+  try {
+    const response = await axios.post(
+      `${process.env.APPWRITE_ENDPOINT}/functions/${process.env.UPDATE_TOKENS_FUNCTION_ID}/executions`,
+      {
+        userId,
+        provider: 'google',
+        accessToken,
+        refreshToken,
+        expiryDate
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Appwrite-Project': process.env.APPWRITE_PROJECT_ID,
+          'X-Appwrite-Key': process.env.APPWRITE_API_KEY
+        }
+      }
+    );
+    
+    console.log('Tokens stored in Appwrite:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error storing tokens in Appwrite:', error);
+    return null;
+  }
+};
+
 // Handle Google OAuth callback
 app.get('/auth/google/callback', async (req, res) => {
   const { code } = req.query;
@@ -124,6 +153,14 @@ app.get('/auth/google/callback', async (req, res) => {
           console.log("Created new user:", user.$id);
         }
         
+        // Store tokens in Appwrite using the custom function
+        await storeTokensInAppwrite(
+          user.$id,
+          access_token,
+          refresh_token,
+          expiryDate.toISOString()
+        );
+        
         // Store Google OAuth information in user metadata or a separate collection
         // This might require setting up a database collection for extended user data
         
@@ -155,6 +192,15 @@ app.get('/auth/google/callback', async (req, res) => {
         refreshToken: refresh_token,
         expiresAt: expiryDate.toISOString()
       };
+      
+      // Still try to store tokens in Appwrite even if user creation failed
+      // We'll use the googleId as userId in this case
+      await storeTokensInAppwrite(
+        googleId,
+        access_token,
+        refresh_token,
+        expiryDate.toISOString()
+      );
       
       res.redirect('/dashboard?tokenOnly=true');
     }
